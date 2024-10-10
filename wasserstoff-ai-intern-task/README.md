@@ -31,7 +31,7 @@ Requirements
 Installation
 ---------------
 
-    Clone repository: git clone https://github.com/your-username/your-repo-name.git
+    Clone repository: git clone git@github.com:its-relative/sapeksh-tomar-wasserstoff-AiInternTask.git
     Install dependencies: pip install -r requirements.txt
     Set up MongoDB
 
@@ -72,5 +72,3 @@ Contributions are welcome!
 License
 ---------
 This project is licensed under the MIT License.
-Note: Replace your-username and your-repo-name with your actual GitHub username and repository name.
-Save this as README.md in your repository's root directory.
