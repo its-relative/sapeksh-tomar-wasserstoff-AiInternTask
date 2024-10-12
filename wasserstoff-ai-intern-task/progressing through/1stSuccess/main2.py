@@ -1,7 +1,8 @@
 import os
 import requests
 import pdfplumber
-from src.summarization import generate_summary_for_pdf_text  # Corrected import
+# from src.summarization import generate_summary_for_pdf_text,summarize  # Corrected import
+from src.summarization import summarize  # Import the summarize function
 from src.keyword_extraction import extract_keywords_from_pdf_text  # Corrected import
 from src.db_operations import connect_to_mongo, store_pdf_data
 
@@ -70,7 +71,9 @@ def process_pdf(file_name, file_path):
     
     if text:
         # Summarize the text
-        summary = generate_summary_for_pdf_text(text)  # Corrected function call
+        # summary = generate_summary_for_pdf_text(text)  # Corrected function call
+        summary = summarize(text)  # Corrected function call
+
         
         # Extract keywords
         keywords = extract_keywords_from_pdf_text(text)  # Corrected function call
