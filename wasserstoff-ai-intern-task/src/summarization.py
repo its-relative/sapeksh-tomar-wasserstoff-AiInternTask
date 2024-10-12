@@ -285,37 +285,122 @@
 
 # ==========================================================
 
-from transformers import T5ForConditionalGeneration, T5Tokenizer
+# from transformers import T5ForConditionalGeneration, T5Tokenizer
+
+# class Summarizer:
+#     def __init__(self, model_name="t5-base"):
+#         # Load pre-trained model and tokenizer
+#         self.tokenizer = T5Tokenizer.from_pretrained(model_name)
+#         self.model = T5ForConditionalGeneration.from_pretrained(model_name)
+
+#     def summarize(self, text, max_length=150, min_length=40, length_penalty=2.0, num_beams=4, no_repeat_ngram_size=2):
+#         """
+#         Summarize the input text using T5 model.
+#         """
+#         # Preprocess the input text for T5
+#         input_ids = self.tokenizer.encode(f"summarize: {text}", return_tensors="pt", max_length=512, truncation=True)
+        
+#         # Generate the summary
+#         summary_ids = self.model.generate(
+#             input_ids, 
+#             max_length=max_length, 
+#             min_length=min_length, 
+#             length_penalty=length_penalty, 
+#             num_beams=num_beams, 
+#             no_repeat_ngram_size=no_repeat_ngram_size, 
+#             early_stopping=True
+#         )
+        
+#         # Decode the summary output
+#         summary = self.tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+#         return summary
+
+# # Create a function for easy import
+# def summarize(text):
+#     summarizer = Summarizer()
+#     return summarizer.summarize(text)
+# ====================================
+
+from transformers import pipeline
 
 class Summarizer:
-    def __init__(self, model_name="t5-base"):
-        # Load pre-trained model and tokenizer
-        self.tokenizer = T5Tokenizer.from_pretrained(model_name)
-        self.model = T5ForConditionalGeneration.from_pretrained(model_name)
+    def __init__(self, model_name="facebook/bart-large-cnn"):
+        # Initialize the summarization pipeline with the specified model
+        self.summarizer = pipeline("summarization", model=model_name)
 
     def summarize(self, text, max_length=150, min_length=40, length_penalty=2.0, num_beams=4, no_repeat_ngram_size=2):
         """
-        Summarize the input text using T5 model.
+        Summarize the input text using the specified parameters to control the summary generation.
+        Parameters like length_penalty, num_beams, and no_repeat_ngram_size are not directly supported by the pipeline,
+        so we will adapt as much as possible using the pipeline's functionality.
         """
-        # Preprocess the input text for T5
-        input_ids = self.tokenizer.encode(f"summarize: {text}", return_tensors="pt", max_length=512, truncation=True)
-        
-        # Generate the summary
-        summary_ids = self.model.generate(
-            input_ids, 
+        # Calculate input length
+        input_length = len(text.split())
+
+        # Dynamically adjust max_length based on input size, similar to the T5 model behavior
+        max_length = min(max_length, max(10, int(input_length * 0.8)))
+        min_length = min(min_length, max_length - 10)
+
+        # Generate summary
+        summary = self.summarizer(
+            text, 
             max_length=max_length, 
             min_length=min_length, 
-            length_penalty=length_penalty, 
-            num_beams=num_beams, 
-            no_repeat_ngram_size=no_repeat_ngram_size, 
-            early_stopping=True
+            length_penalty=length_penalty,  # Length penalty will not affect pipeline, but kept for interface consistency
+            num_beams=num_beams,  # `num_beams` affects beam search, supported by the model
+            no_repeat_ngram_size=no_repeat_ngram_size  # Prevent n-gram repetition
         )
-        
-        # Decode the summary output
-        summary = self.tokenizer.decode(summary_ids[0], skip_special_tokens=True)
-        return summary
 
-# Create a function for easy import
+        # Return the summary text if available
+        return summary[0]['summary_text'] if summary else None
+
+# Chunking and summary generation logic for large texts
+def chunk_text(text, max_chunk_size=1024):
+    """
+    Chunk the text into smaller pieces based on word count.
+    """
+    words = text.split()
+    chunks = []
+    for i in range(0, len(words), max_chunk_size):
+        chunk = " ".join(words[i:i + max_chunk_size])
+        if chunk:  # Ensure chunk is not empty
+            chunks.append(chunk)
+    return chunks
+
+def generate_summary_for_pdf_text(text):
+    """
+    Generate a summary for the given PDF text by processing it in chunks if necessary.
+    """
+    num_words = len(text.split())
+    
+    summarizer = Summarizer()
+    
+    if num_words < 300:
+        # Short summary for short documents
+        summary = summarizer.summarize(text, max_length=50, min_length=20)
+        return summary if summary else ""
+    
+    elif 300 <= num_words < 1000:
+        # Medium summary for medium-sized documents
+        summary = summarizer.summarize(text, max_length=100, min_length=10)
+        return summary if summary else ""
+
+    else:
+        # Long document, use chunking
+        chunks = chunk_text(text)
+        summaries = []
+        
+        for chunk in chunks:
+            try:
+                summary = summarizer.summarize(chunk, max_length=64, min_length=10)
+                if summary:
+                    summaries.append(summary)
+            except Exception as e:
+                print(f"Error during summarization of chunk: {e}")
+        
+        return " ".join(summaries)
+
+# Create a function for easy import and summarization
 def summarize(text):
     summarizer = Summarizer()
     return summarizer.summarize(text)
